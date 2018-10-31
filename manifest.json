@@ -1,0 +1,28 @@
+{
+    "id": "Export artboards to PNG",
+    "name": "Export artboards to PNG",
+    "version": "1.0.0",
+    "host": {
+        "app": "XD",
+        "minVersion": "13.0.0"
+    },
+    "uiEntryPoints": [
+        {
+            "type": "menu",
+            "label": "Export artboards",
+            "menuItems": [
+                {
+                    "type": "menu",
+                    "label": "Export selected artboards to PNG",
+                    "commandId": "exportSelectedArtboards"
+                },
+                {
+                    "type": "menu",
+                    "label": "Export all artboards to PNG",
+                    "commandId": "exportAllArtboards"
+                }
+            ]
+        }
+    ]
+}
+
