@@ -3,28 +3,16 @@ const fs = require('uxp').storage.localFileSystem;
 const { Artboard } = require('scenegraph');
 const {alert, confirm, prompt, error, warning} = require("./lib/dialogs.js");
 
-// 書き出し時の比率
-const ratioItems = [
-    {"name": "0.5x", "value": "0.5"},
-    {"name": "1x", "value": "1"},
-    {"name": "1.5x", "value": "1.5"},
-    {"name": "2x", "value": "2"},
-    {"name": "3x", "value": "3"},
-    {"name": "4x", "value": "4"}
-];
+let selectedRatio;
 
 async function exportSelectedArtboards(selection, root) {
     let nodes = selection.items.filter(node => node instanceof Artboard);
     if (nodes.length == 0) {
         error('エラー', 'アートボードを1つ以上選択して実行ください');
         return;
+    } else {
+        exportArtboards(nodes);
     }
-    const outputFilePaths = await exportArtboards(nodes);
-    if (undefined == outputFilePaths) {
-        return;
-    }
-    const joinedFilePath = outputFilePaths.join('\n');
-    alert('処理が完了しました', `書き出したPNGファイルは下記に格納されています\n\n${joinedFilePath}`);
 }
 
 async function exportAllArtboards(selection, root) {
@@ -32,8 +20,13 @@ async function exportAllArtboards(selection, root) {
     if (nodes.length == 0) {
         error('エラー', 'アートボードが存在しません');
         return;
+    } else {
+        exportArtboards(nodes);
     }
-    const outputFilePaths = await exportArtboards(nodes);
+}
+
+async function exportArtboards(nodes) {
+    const outputFilePaths = await exportNodes(nodes);
     if (undefined == outputFilePaths) {
         return;
     }
@@ -41,7 +34,15 @@ async function exportAllArtboards(selection, root) {
     alert('処理が完了しました', `書き出したPNGファイルは下記に格納されています\n\n${joinedFilePath}`);
 }
 
-async function exportArtboards(nodes) {
+async function exportNodes(nodes) {
+    const dialog = await makeSelectScaleDialog();
+    await dialog.showModal();
+    dialog.remove();
+
+    if (selectedRatio.selectedIndex < 0) {
+        return;
+    }
+
     const excutedTimeStr = getNowYMDHMS();
     const selectedFolder = await fs.getFolder();
     if (null == selectedFolder) {
@@ -73,7 +74,7 @@ async function makeRenditionOptions(nodes, folder) {
             node: node,
             outputFile: file,
             type: 'png',
-            scale: 2
+            scale: selectedRatio.options[Math.max(0, selectedRatio.selectedIndex)].value
         });
     }));
     return renditions;
@@ -89,6 +90,66 @@ function getNowYMDHMS() {
     const s = ('00' + dt.getSeconds()).slice(-2);
     const result = y + m + d + h + mm + s;
     return result;
+}
+
+function makeSelectScaleDialog() {
+    const labelWidth = 75;
+
+    const dialog =
+        h("dialog",
+          h("form", { method:"dialog", style: { width: 380 }},
+            h("h1", "Select the export scale"),
+            h("label", { class: "row" },
+              h("span", { style: { width: labelWidth } }, "Scale"),
+              selectedRatio = h("select", {  },
+                                h("option", { selected: true, value: 0.5 }, "0.5x"),
+                                h("option", { value: 1 }, "1x"),
+                                h("option", { value: 1.5 }, "1.5x"),
+                                h("option", { value: 2 }, "2x"),
+                                h("option", { value: 3 }, "3x"),
+                                h("option", { value: 4 }, "4x"),
+                                h("option", { value: 5 }, "5x")
+              )
+            ),
+            h("footer",
+              h("button", { uxpVariant: "primary", onclick(e) { selectedRatio.selectedIndex = -1; dialog.close(); } }, "Cancel"),
+              h("button", { uxpVariant: "cta", type: "submit", onclick(e){ dialog.close(); e.preventDefault; } }, "OK")
+            )
+          )
+        )
+    document.body.appendChild(dialog);
+    return dialog;
+}
+
+/**
+* Shorthand for creating Elements.
+* @param {*} tag The tag name of the element.
+* @param {*} [props] Optional props.
+* @param {*} children Child elements or strings
+*/
+function h(tag, props, ...children) {
+    let element = document.createElement(tag);
+    if (props) {
+        if (props.nodeType || typeof props !== "object") {
+            children.unshift(props);
+        }
+        else {
+            for (let name in props) {
+                let value = props[name];
+                if (name == "style") {
+                    Object.assign(element.style, value);
+                }
+                else {
+                    element.setAttribute(name, value);
+                    element[name] = value;
+                }
+            }
+        }
+    }
+    for (let child of children) {
+        element.appendChild(typeof child === "object" ? child : document.createTextNode(child));
+    }
+    return element;
 }
 
 module.exports = {
